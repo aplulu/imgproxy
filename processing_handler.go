@@ -162,9 +162,23 @@ func handleProcessing(reqID string, rw http.ResponseWriter, r *http.Request) {
 	ctx, timeoutCancel := context.WithTimeout(ctx, time.Duration(conf.WriteTimeout)*time.Second)
 	defer timeoutCancel()
 
-	ctx, err := parsePath(ctx, r)
-	if err != nil {
-		panic(err)
+	var err error
+	var prefixMatch bool
+	for _, v := range conf.PrefixUpstreams {
+		parts := strings.SplitN(v, ";", 2)
+		if len(parts) == 2 && strings.HasPrefix(r.URL.Path, parts[0]) {
+			prefixMatch = true
+			imageURL := strings.TrimPrefix(parts[1], "/") + strings.TrimPrefix(r.URL.Path, parts[0])
+			ctx, err = parseQuery(ctx, r, imageURL)
+			break
+		}
+	}
+
+	if !prefixMatch {
+		ctx, err = parsePath(ctx, r)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	ctx, downloadcancel, err := downloadImage(ctx)

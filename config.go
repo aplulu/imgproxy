@@ -311,6 +311,8 @@ type config struct {
 	DownloadBufferSize             int
 	GZipBufferSize                 int
 	BufferPoolCalibrationThreshold int
+
+	PrefixUpstreams   []string
 }
 
 var conf = config{
@@ -491,6 +493,8 @@ func configure() error {
 	intEnvConfig(&conf.DownloadBufferSize, "IMGPROXY_DOWNLOAD_BUFFER_SIZE")
 	intEnvConfig(&conf.GZipBufferSize, "IMGPROXY_GZIP_BUFFER_SIZE")
 	intEnvConfig(&conf.BufferPoolCalibrationThreshold, "IMGPROXY_BUFFER_POOL_CALIBRATION_THRESHOLD")
+
+	strSliceEnvConfig(&conf.PrefixUpstreams, "IMGPROXY_PREFIX_UPSTREAMS")
 
 	if len(conf.Keys) != len(conf.Salts) {
 		return fmt.Errorf("Number of keys and number of salts should be equal. Keys: %d, salts: %d", len(conf.Keys), len(conf.Salts))

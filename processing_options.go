@@ -1214,6 +1214,55 @@ func parsePath(ctx context.Context, r *http.Request) (context.Context, error) {
 	return ctx, nil
 }
 
+func parseQuery(ctx context.Context, r *http.Request, imageURL string) (context.Context, error) {
+	var err error
+
+	path := trimAfter(r.RequestURI, '?')
+
+	if len(conf.PathPrefix) > 0 {
+		path = strings.TrimPrefix(path, conf.PathPrefix)
+	}
+
+	path = strings.TrimPrefix(path, "/")
+
+	parts := strings.Split(path, "/")
+
+	if len(parts) < 2 {
+		return ctx, newError(404, fmt.Sprintf("Invalid path: %s", path), msgInvalidURL)
+	}
+
+	if !conf.AllowInsecure {
+		if err = validatePath(parts[0], strings.TrimPrefix(path, parts[0])); err != nil {
+			return ctx, newError(403, err.Error(), msgForbidden)
+		}
+	}
+
+	headers := &processingHeaders{
+		Accept:        r.Header.Get("Accept"),
+		Width:         r.Header.Get("Width"),
+		ViewportWidth: r.Header.Get("Viewport-Width"),
+		DPR:           r.Header.Get("DPR"),
+	}
+
+	po, err := defaultProcessingOptions(headers)
+	if err != nil {
+		return ctx, err
+	}
+
+	for k, v := range r.URL.Query() {
+		if err := applyProcessingOption(po, k, v); err != nil {
+			fmt.Printf("processingOption error: %v\n", err)
+		}
+	}
+
+	fmt.Printf("ImageURL: %v, Options: %+v\n", imageURL, *po)
+
+	ctx = context.WithValue(ctx, imageURLCtxKey, imageURL)
+	ctx = context.WithValue(ctx, processingOptionsCtxKey, po)
+
+	return ctx, nil
+}
+
 func getImageURL(ctx context.Context) string {
 	str, _ := ctx.Value(imageURLCtxKey).(string)
 	return str
